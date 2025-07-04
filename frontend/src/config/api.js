@@ -5,8 +5,8 @@ const getApiUrl = () => {
     return '';
   }
   
-  // In production, use environment variable or fallback
-  return import.meta.env.VITE_API_URL || 'https://your-backend-service.onrender.com';
+  // In production, use environment variable or fallback to your backend URL
+  return import.meta.env.VITE_API_URL || 'https://gpay-mock-upi-backend-fizen.onrender.com';
 };
 
 export const API_BASE_URL = getApiUrl();
