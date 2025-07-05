@@ -35,7 +35,11 @@ export const API_ENDPOINTS = {
 };
 
 export const getApiEndpoint = (endpoint, params = {}) => {
-  let url = `${API_BASE_URL}${endpoint}`;
+  // Ensure base URL doesn't end with slash and endpoint starts with slash
+  const baseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  
+  let url = `${baseUrl}${cleanEndpoint}`;
   
   // Replace parameters in URL
   Object.keys(params).forEach(key => {
