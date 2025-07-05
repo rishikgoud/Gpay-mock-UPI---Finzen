@@ -30,6 +30,7 @@ const corsOptions = {
   origin: [
     'http://localhost:5173', // Development frontend
     'http://localhost:3001', // Development frontend alternative
+    'https://finzen-z1gq.onrender.com',
     'https://gpay-mock-upi-frontend-fizen.onrender.com', // Production frontend
     'https://gpay-mock-upi-fizen.onrender.com', // Alternative production URL
     process.env.FRONTEND_URL // Environment variable for additional frontend URLs
