@@ -43,6 +43,32 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    cors: {
+      origins: corsOptions.origin,
+      credentials: corsOptions.credentials
+    }
+  });
+});
+
+// API status endpoint
+app.get('/api/status', (req, res) => {
+  res.json({
+    message: 'GPay Mock UPI API is running',
+    version: '1.0.0',
+    endpoints: {
+      health: '/health',
+      api: '/api/status',
+      upi: '/upi/*'
+    }
+  });
+});
+
 // Home page (EJS)
 app.get('/', (req, res) => {
   res.render('index', { title: 'GPay Mock API Home' });

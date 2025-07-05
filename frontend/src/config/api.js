@@ -1,15 +1,22 @@
 // API Configuration for different environments
 const getApiUrl = () => {
-  // In development, use proxy
+  // In development, use localhost backend
   if (import.meta.env.DEV) {
-    return '';
+    return 'http://localhost:3000';
   }
   
   // In production, use environment variable or fallback to your backend URL
-  return import.meta.env.VITE_API_URL || 'https://gpay-mock-upi-backend-fizen.onrender.com';
+  return import.meta.env.VITE_API_URL || 'https://gpay-upi-backend-finzen.onrender.com';
 };
 
 export const API_BASE_URL = getApiUrl();
+
+// Debug logging
+console.log('API Configuration:', {
+  isDev: import.meta.env.DEV,
+  apiBaseUrl: API_BASE_URL,
+  env: import.meta.env.MODE
+});
 
 export const API_ENDPOINTS = {
   // Auth endpoints
