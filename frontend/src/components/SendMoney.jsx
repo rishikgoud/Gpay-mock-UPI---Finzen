@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import useAuth from './useAuth';
+import { getApiEndpoint, API_ENDPOINTS } from '../config/api.js';
 
 export default function SendMoney() {
   const { token, upiId } = useAuth();
@@ -23,8 +24,12 @@ export default function SendMoney() {
     setError('');
     setSuccess('');
     const paymentId = crypto.randomUUID(); // Use built-in crypto for unique ID
+    
     try {
-      const res = await fetch('/upi/send', {
+      const sendMoneyUrl = getApiEndpoint(API_ENDPOINTS.SEND_MONEY);
+      console.log('Sending money to:', sendMoneyUrl);
+      
+      const res = await fetch(sendMoneyUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -38,17 +43,25 @@ export default function SendMoney() {
           paymentId, // Include paymentId
         }),
       });
+      
+      console.log('Send money response status:', res.status);
       let data = {};
       try {
         data = await res.json();
-      } catch {
-        data = {};
+        console.log('Send money response data:', data);
+      } catch (jsonError) {
+        console.error('Failed to parse JSON response:', jsonError);
+        const text = await res.text();
+        console.log('Response text:', text);
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
       }
+      
       if (!res.ok) throw new Error(data.message || 'Payment failed');
       setSuccess('Payment successful!');
       setForm({ receiverUpi: '', amount: '', category: '', note: '' });
     } catch (err) {
-      setError(err.message);
+      console.error('Send money error:', err);
+      setError(err.message || 'Payment failed');
     } finally {
       setLoading(false);
     }

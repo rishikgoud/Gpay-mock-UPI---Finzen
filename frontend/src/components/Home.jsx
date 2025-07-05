@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import useAuth from './useAuth';
+import { getApiEndpoint, API_ENDPOINTS } from '../config/api.js';
 
 export default function Home() {
   const { token, upiId, name } = useAuth();
@@ -12,15 +13,34 @@ export default function Home() {
     if (!token || !upiId) return;
     setLoading(true);
     setError('');
-    fetch(`/upi/balance/${upiId}`, {
-      headers: { 'Authorization': `Bearer ${token}` },
+    
+    const balanceUrl = getApiEndpoint(API_ENDPOINTS.BALANCE(upiId));
+    console.log('Fetching balance from:', balanceUrl);
+    
+    fetch(balanceUrl, {
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
     })
-      .then(res => res.json().then(data => ({ ok: res.ok, data })))
-      .then(({ ok, data }) => {
-        if (!ok) throw new Error(data.message || 'Failed to fetch balance');
+      .then(res => {
+        console.log('Balance response status:', res.status);
+        if (!res.ok) {
+          return res.text().then(text => {
+            console.log('Error response text:', text);
+            throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+          });
+        }
+        return res.json();
+      })
+      .then(data => {
+        console.log('Balance data:', data);
         setBalance(data.balance);
       })
-      .catch(err => setError(err.message))
+      .catch(err => {
+        console.error('Balance fetch error:', err);
+        setError(err.message || 'Failed to fetch balance');
+      })
       .finally(() => setLoading(false));
   }, [token, upiId]);
 

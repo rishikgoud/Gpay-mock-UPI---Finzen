@@ -28,10 +28,12 @@ app.set('views', path.join(__dirname, 'views'));
 // CORS Configuration
 const corsOptions = {
   origin: [
-    'http://localhost:5173', // Development frontend
-    'http://localhost:3001', // Development frontend alternative
-    'https://finzen-z1gq.onrender.com',
-    'https://gpay-mock-upi-frontend-fizen.onrender.com', // Production frontend
+    'https://finzen-z1gq.onrender.com',        // Your FinZen frontend
+    'https://gpay-mock-upi-frontend-fizen.onrender.com', // GPay frontend
+    'http://localhost:5173',                   // Local development
+    'http://localhost:3000',                   // Local development
+    'http://localhost:5174',                   // Alternative local port
+    'http://localhost:3001',                   // Development frontend alternative
     'https://gpay-mock-upi-fizen.onrender.com', // Alternative production URL
     process.env.FRONTEND_URL // Environment variable for additional frontend URLs
   ].filter(Boolean), // Remove undefined values
@@ -42,6 +44,12 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+
+// Handle preflight requests explicitly
+app.options('*', cors(corsOptions));
+app.options('/upi/*', cors(corsOptions));
+app.options('/socket.io/*', cors(corsOptions));
+
 app.use(express.json());
 
 // Health check endpoint
@@ -80,24 +88,32 @@ app.use('/upi', upiRoutes);
 
 const PORT = process.env.PORT || 3000;
 const server = http.createServer(app);
+
+// Socket.io Configuration with improved CORS
 const io = new SocketIOServer(server, {
   cors: {
     origin: [
-      'http://localhost:5173',
-      'http://localhost:3001',
-      'https://gpay-mock-upi-frontend-fizen.onrender.com',
-      'https://gpay-mock-upi-fizen.onrender.com',
-      process.env.FRONTEND_URL
+      'https://finzen-z1gq.onrender.com',        // Your FinZen frontend
+      'https://gpay-mock-upi-frontend-fizen.onrender.com', // GPay frontend
+      'http://localhost:5173',                   // Local development
+      'http://localhost:3000',                   // Local development
+      'http://localhost:5174',                   // Alternative local port
+      'http://localhost:3001',                   // Development frontend alternative
+      'https://gpay-mock-upi-fizen.onrender.com', // Alternative production URL
+      process.env.FRONTEND_URL // Environment variable for additional frontend URLs
     ].filter(Boolean),
+    credentials: true,
     methods: ['GET', 'POST'],
-    credentials: true
-  }
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  },
+  transports: ['websocket', 'polling'] // Allow both WebSocket and polling
 });
 
 app.set('io', io);
 
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log('CORS enabled for origins:', corsOptions.origin);
 });
 
 export default app; 

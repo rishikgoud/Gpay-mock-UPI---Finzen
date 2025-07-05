@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import useAuth from './useAuth';
+import { getApiEndpoint, API_ENDPOINTS } from '../config/api.js';
 
 export default function Transactions() {
   const { token, upiId } = useAuth();
@@ -17,14 +18,29 @@ export default function Transactions() {
       setLoading(true);
       setError('');
       try {
-        const res = await fetch(`/upi/transactions/${upiId}`, {
-          headers: { 'Authorization': `Bearer ${token}` },
+        const transactionsUrl = getApiEndpoint(API_ENDPOINTS.TRANSACTIONS(upiId));
+        console.log('Fetching transactions from:', transactionsUrl);
+        
+        const res = await fetch(transactionsUrl, {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
         });
+        
+        console.log('Transactions response status:', res.status);
+        if (!res.ok) {
+          const text = await res.text();
+          console.log('Error response text:', text);
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
+        
         const data = await res.json();
-        if (!res.ok) throw new Error(data.message || 'Failed to fetch transactions');
+        console.log('Transactions data:', data);
         setTransactions(Array.isArray(data) ? data : []);
       } catch (err) {
-        setError(err.message);
+        console.error('Transactions fetch error:', err);
+        setError(err.message || 'Failed to fetch transactions');
       } finally {
         setLoading(false);
       }
@@ -36,15 +52,30 @@ export default function Transactions() {
     setSyncStatus('syncing');
     setError('');
     try {
-      const res = await fetch(`/upi/transactions/${upiId}/finzen`, {
-        headers: { 'Authorization': `Bearer ${token}` },
+      const finzenUrl = getApiEndpoint(API_ENDPOINTS.FINZEN_TRANSACTIONS(upiId));
+      console.log('Syncing with Finzen from:', finzenUrl);
+      
+      const res = await fetch(finzenUrl, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
       });
+      
+      console.log('Finzen sync response status:', res.status);
+      if (!res.ok) {
+        const text = await res.text();
+        console.log('Finzen sync error response text:', text);
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      }
+      
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Sync failed');
+      console.log('Finzen sync data:', data);
       setTransactions(Array.isArray(data) ? data : []);
       setSyncStatus('synced');
     } catch (err) {
-      setError(err.message);
+      console.error('Finzen sync error:', err);
+      setError(err.message || 'Sync failed');
       setSyncStatus('error');
     }
   };
