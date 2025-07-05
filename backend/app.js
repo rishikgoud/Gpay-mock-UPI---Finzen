@@ -47,8 +47,6 @@ app.use(cors(corsOptions));
 
 // Handle preflight requests explicitly
 app.options('*', cors(corsOptions));
-app.options('/upi/*', cors(corsOptions));
-app.options('/socket.io/*', cors(corsOptions));
 
 app.use(express.json());
 
@@ -103,10 +101,29 @@ const io = new SocketIOServer(server, {
       process.env.FRONTEND_URL // Environment variable for additional frontend URLs
     ].filter(Boolean),
     credentials: true,
-    methods: ['GET', 'POST'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Origin'],
+    preflightContinue: false,
+    optionsSuccessStatus: 200
   },
-  transports: ['websocket', 'polling'] // Allow both WebSocket and polling
+  transports: ['websocket', 'polling'], // Allow both WebSocket and polling
+  allowEIO3: true, // Allow Engine.IO v3 clients
+  pingTimeout: 60000,
+  pingInterval: 25000
+});
+
+// Socket.io connection handling
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.id);
+  
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+  });
+  
+  // Handle any custom events here
+  socket.on('join', (data) => {
+    console.log('Client joined:', data);
+  });
 });
 
 app.set('io', io);
@@ -114,6 +131,7 @@ app.set('io', io);
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log('CORS enabled for origins:', corsOptions.origin);
+  console.log('Socket.io CORS enabled for origins:', io.engine.opts.cors.origin);
 });
 
 export default app; 

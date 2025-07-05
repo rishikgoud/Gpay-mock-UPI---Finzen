@@ -7,54 +7,76 @@ async function retryFinzenAPI(apiCall, maxRetries = 3) {
     try {
       return await apiCall();
     } catch (error) {
+      console.log(`Finzen API attempt ${attempt} failed:`, error.message);
       if (attempt === maxRetries) throw error;
       await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
     }
   }
 }
 
-// Sync all users with Finzen
+// Sync all users with Finzen - completely non-blocking
 export async function syncAllUsersWithFinzen() {
-  try {
-    const users = await UPIUser.find({});
-    
-    for (const user of users) {
-      await syncUserTransactionsWithFinzen(user);
+  // Run in a separate process to avoid blocking the main app
+  setImmediate(async () => {
+    try {
+      console.log('🔄 Starting Finzen sync...');
+      const users = await UPIUser.find({});
+      
+      for (const user of users) {
+        // Process each user independently
+        syncUserTransactionsWithFinzen(user).catch(err => {
+          console.error(`❌ Finzen sync failed for user ${user.userId}:`, err.message);
+        });
+      }
+      console.log('✅ Finzen sync completed');
+    } catch (error) {
+      console.error('❌ Finzen sync failed:', error.message);
     }
-  } catch (error) {
-    console.error('Finzen sync failed:', error);
-  }
+  });
 }
 
 // Sync transactions for a specific user with Finzen
 async function syncUserTransactionsWithFinzen(user) {
   try {
+    // Check if Finzen API is configured
+    if (!process.env.FINZEN_API_URL) {
+      console.log(`⚠️ Finzen sync skipped for user ${user.userId} - API URL not configured`);
+      return;
+    }
+
     // Fetch transactions from Finzen for this user
     const finzenResponse = await retryFinzenAPI(async () => {
-      return await fetch(`${process.env.FINZEN_API_URL}/transactions`, {
+      const response = await fetch(`${process.env.FINZEN_API_URL}/transactions`, {
         method: 'GET',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${process.env.FINZEN_API_KEY || 'default-key'}`,
           'User-ID': user.userId,
           'UPI-ID': user.upiId
-        }
+        },
+        timeout: 10000 // 10 second timeout
       });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      return response;
     });
     
-    if (finzenResponse.ok) {
-      const finzenTransactions = await finzenResponse.json();
-      
-      // Sync transactions with local database
-      await syncTransactionsWithFinzen(user._id, finzenTransactions);
-      
-      // Mark local transactions as synced
-      await markLocalTransactionsAsSynced(user._id);
-    } else {
-      console.error(`Failed to fetch Finzen transactions for user ${user.userId}: ${finzenResponse.status}`);
-    }
+    const finzenTransactions = await finzenResponse.json();
+    
+    // Sync transactions with local database
+    await syncTransactionsWithFinzen(user._id, finzenTransactions);
+    
+    // Mark local transactions as synced
+    await markLocalTransactionsAsSynced(user._id);
+    
+    console.log(`✅ Synced ${finzenTransactions.length} transactions for user ${user.userId}`);
+    
   } catch (error) {
-    console.error(`Failed to sync user ${user.userId}:`, error);
+    console.error(`❌ Failed to sync user ${user.userId}:`, error.message);
+    // Don't throw - just log the error
   }
 }
 
@@ -85,7 +107,8 @@ async function syncTransactionsWithFinzen(userId, finzenTransactions) {
         });
       }
     } catch (error) {
-      console.error(`Failed to sync transaction ${finzenTx.paymentId}:`, error);
+      console.error(`❌ Failed to sync transaction ${finzenTx.paymentId}:`, error.message);
+      // Continue with other transactions
     }
   }
 }
@@ -102,18 +125,26 @@ async function markLocalTransactionsAsSynced(userId) {
       { syncedWithFinzen: true }
     );
   } catch (error) {
-    console.error(`Failed to mark transactions as synced for user ${userId}:`, error);
+    console.error(`❌ Failed to mark transactions as synced for user ${userId}:`, error.message);
   }
 }
 
+// DISABLED: Finzen sync is DISABLED to prevent connection errors
+// Only enable if you have a working Finzen API endpoint
+console.log('⚠️ Finzen sync is DISABLED to prevent connection errors');
+console.log('To enable: Set FINZEN_API_URL environment variable to a working API endpoint');
+
+/*
 // Start background sync if environment variable is set
 const syncInterval = parseInt(process.env.FINZEN_SYNC_INTERVAL) || 300000; // 5 minutes default
 
 if (process.env.FINZEN_API_URL) {
+  console.log(`🔄 Finzen sync enabled - running every ${syncInterval/1000} seconds`);
   setInterval(syncAllUsersWithFinzen, syncInterval);
   
-  // Initial sync on startup
-  setTimeout(syncAllUsersWithFinzen, 5000); // Wait 5 seconds after startup
+  // Initial sync on startup (delayed to avoid blocking startup)
+  setTimeout(syncAllUsersWithFinzen, 10000); // Wait 10 seconds after startup
 } else {
   console.log('⚠️ Finzen sync disabled - FINZEN_API_URL not set');
-} 
+}
+*/ 
