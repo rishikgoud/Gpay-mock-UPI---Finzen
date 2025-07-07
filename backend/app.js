@@ -25,7 +25,7 @@ const __dirname = path.dirname(__filename);
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// ✅ CORS Dynamic Origin Check
+// ✅ CORS Dynamic Origin Check 
 const allowedOrigins = [
   'https://finzen-z1gq.onrender.com',
   'https://gpay-mock-upi-frontend-fizen.onrender.com',
@@ -54,6 +54,18 @@ const corsOptions = {
 // ✅ Apply CORS middleware
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions)); // Preflight support
+
+// Fallback CORS header middleware for debugging
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With,Origin');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
 
 // ✅ JSON Middleware
 app.use(express.json());
